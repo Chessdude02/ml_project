@@ -9,9 +9,10 @@ sns.set_style('whitegrid')
 plt.rcParams['figure.figsize'] = (12, 6)
 
 class ModelVisualizer:
-    def __init__(self, output_dir: str = 'outputs'):
+    def __init__(self, output_dir: str = 'outputs', suffix: str = ''):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.suffix = suffix
 
     def plot_predictions_comparison(self,y_test: np.ndarray,predictions: Dict[str, np.ndarray],dates: Optional[pd.Series] = None) -> str:
         fig, ax = plt.subplots(figsize=(14, 7))
@@ -28,7 +29,7 @@ class ModelVisualizer:
         if dates is not None:
             plt.xticks(rotation=45)
         plt.tight_layout()
-        output_path = self.output_dir / 'predictions_comparison.png'
+        output_path = self.output_dir / f'predictions_comparison{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -48,7 +49,7 @@ class ModelVisualizer:
                 width = bar.get_width()
                 ax.text(width,bar.get_y() + bar.get_height() / 2,f'{width:.2f}',ha='left',va='center',fontsize=9,fontweight='bold')
         plt.tight_layout()
-        output_path = self.output_dir / 'metrics_comparison.png'
+        output_path = self.output_dir / f'metrics_comparison{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -66,7 +67,7 @@ class ModelVisualizer:
             width = bar.get_width()
             ax.text(width, bar.get_y() + bar.get_height() / 2,f'{width:.3f}', ha='left', va='center',fontsize=9, fontweight='bold')
         plt.tight_layout()
-        output_path = self.output_dir / 'feature_importance.png'
+        output_path = self.output_dir / f'feature_importance{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -80,7 +81,7 @@ class ModelVisualizer:
         ax.grid(True, alpha=0.3)
         plt.xticks(rotation=45)
         plt.tight_layout()
-        output_path = self.output_dir / 'time_series.png'
+        output_path = self.output_dir / f'time_series{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -99,7 +100,7 @@ class ModelVisualizer:
             ax.set_title(f'Residuals: {model_name}', fontsize=12, fontweight='bold')
             ax.grid(True, alpha=0.3)
         plt.tight_layout()
-        output_path = self.output_dir / 'residuals.png'
+        output_path = self.output_dir / f'residuals{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -111,7 +112,7 @@ class ModelVisualizer:
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.scale(1, 1.5)
-        output_path = self.output_dir / 'model_ranking_table.png'
+        output_path = self.output_dir / f'model_ranking_table{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -125,7 +126,7 @@ class ModelVisualizer:
         ax.set_ylabel('Frequency', fontsize=12)
         ax.set_title('Prediction Error Distribution', fontsize=14, fontweight='bold')
         ax.legend()
-        output_path = self.output_dir / 'error_distribution.png'
+        output_path = self.output_dir / f'error_distribution{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -135,7 +136,7 @@ class ModelVisualizer:
         corr = df.corr(numeric_only=True)
         sns.heatmap(corr, annot=False, cmap='coolwarm', linewidths=0.5)
         plt.title('Correlation Heatmap', fontsize=14, fontweight='bold')
-        output_path = self.output_dir / 'correlation_heatmap.png'
+        output_path = self.output_dir / f'correlation_heatmap{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -152,7 +153,7 @@ class ModelVisualizer:
         ax.set_title(f'Rolling RMSE (window={window})', fontsize=14, fontweight='bold')
         ax.legend()
         ax.grid(True, alpha=0.3)
-        output_path = self.output_dir / 'rolling_rmse.png'
+        output_path = self.output_dir / f'rolling_rmse{self.suffix}.png'
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
         return str(output_path)
@@ -172,7 +173,7 @@ class ModelVisualizer:
             yaxis_title='Price',
             template='plotly_white'
         )
-        output_path = str(self.output_dir / 'interactive_predictions.html')
+        output_path = str(self.output_dir / f'interactive_predictions{self.suffix}.html')
         pyo.plot(fig, filename=output_path, auto_open=False)
         return output_path
 
