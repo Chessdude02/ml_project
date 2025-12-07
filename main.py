@@ -6,7 +6,6 @@ from models.trainer import TrainingPipeline, ModelConfig
 from utils.graphs import ModelVisualizer
 
 def save_model(model, filename, folder='saved_models'):
-    """Save trained model to disk"""
     Path(folder).mkdir(parents=True, exist_ok=True)
     filepath = Path(folder) / filename
     with open(filepath, 'wb') as f:
@@ -111,3 +110,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
