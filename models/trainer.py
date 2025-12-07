@@ -5,6 +5,7 @@ from pathlib import Path
 import warnings
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import RandomizedSearchCV
 from prophet import Prophet
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -30,6 +31,23 @@ class ModelConfig:
         'max_depth': 5,
         'learning_rate': 0.1,
         'random_state': 42
+    }
+
+    # Hyperparameter tuning grids
+    rf_param_grid = {
+        'n_estimators': [50, 100, 200, 300],
+        'max_depth': [5, 10, 15, 20, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'max_features': ['sqrt', 'log2', None]
+    }
+
+    gb_param_grid = {
+        'n_estimators': [50, 100, 200, 300],
+        'max_depth': [3, 5, 7, 10],
+        'learning_rate': [0.01, 0.05, 0.1, 0.2],
+        'subsample': [0.6, 0.8, 1.0],
+        'min_samples_split': [2, 5, 10]
     }
 
     ARIMA_ORDER = (2, 1, 2)
@@ -66,9 +84,27 @@ class BaseModelTrainer:
 
 
 class RandomForestTrainer(BaseModelTrainer):
-    def train(self, X_train, y_train, X_test, y_test):
-        model = RandomForestRegressor(**ModelConfig.rf_params)
-        model.fit(X_train, y_train)
+    def train(self, X_train, y_train, X_test, y_test, tune_hyperparams=False):
+        if tune_hyperparams:
+            print("  Tuning Random Forest hyperparameters...")
+            base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
+            random_search = RandomizedSearchCV(
+                base_model,
+                param_distributions=ModelConfig.rf_param_grid,
+                n_iter=20,
+                cv=3,
+                scoring='neg_mean_absolute_error',
+                random_state=42,
+                n_jobs=-1,
+                verbose=1
+            )
+            random_search.fit(X_train, y_train)
+            model = random_search.best_estimator_
+            print(f"  Best params: {random_search.best_params_}")
+        else:
+            model = RandomForestRegressor(**ModelConfig.rf_params)
+            model.fit(X_train, y_train)
+        
         y_pred = model.predict(X_test)
         metrics = self.evaluator.evaluate(y_test, y_pred, 'Random Forest')
         feature_importance = pd.DataFrame({
@@ -79,9 +115,27 @@ class RandomForestTrainer(BaseModelTrainer):
 
 
 class GradientBoostingTrainer(BaseModelTrainer):
-    def train(self, X_train, y_train, X_test, y_test):
-        model = GradientBoostingRegressor(**ModelConfig.gb_params)
-        model.fit(X_train, y_train)
+    def train(self, X_train, y_train, X_test, y_test, tune_hyperparams=False):
+        if tune_hyperparams:
+            print("  Tuning Gradient Boosting hyperparameters...")
+            base_model = GradientBoostingRegressor(random_state=42)
+            random_search = RandomizedSearchCV(
+                base_model,
+                param_distributions=ModelConfig.gb_param_grid,
+                n_iter=20,
+                cv=3,
+                scoring='neg_mean_absolute_error',
+                random_state=42,
+                n_jobs=-1,
+                verbose=1
+            )
+            random_search.fit(X_train, y_train)
+            model = random_search.best_estimator_
+            print(f"  Best params: {random_search.best_params_}")
+        else:
+            model = GradientBoostingRegressor(**ModelConfig.gb_params)
+            model.fit(X_train, y_train)
+        
         y_pred = model.predict(X_test)
         metrics = self.evaluator.evaluate(y_test, y_pred, 'Gradient Boosting')
         return model, y_pred, metrics
@@ -120,8 +174,9 @@ class ARIMATrainer(BaseModelTrainer):
 
 
 class TrainingPipeline:
-    def __init__(self, data_path):
+    def __init__(self, data_path, tune_hyperparams=False):
         self.data_path = data_path
+        self.tune_hyperparams = tune_hyperparams
         self.results = []
         self.predictions = {}
         self.best_model = None
@@ -149,14 +204,14 @@ class TrainingPipeline:
 
     def train_random_forest(self, X_train, y_train, X_test, y_test):
         trainer = RandomForestTrainer()
-        model, pred, metrics, importance = trainer.train(X_train, y_train, X_test, y_test)
+        model, pred, metrics, importance = trainer.train(X_train, y_train, X_test, y_test, self.tune_hyperparams)
         self.results.append(metrics)
         self.predictions['Random Forest'] = pred
         self.feature_importance = importance
 
     def train_gradient_boosting(self, X_train, y_train, X_test, y_test):
         trainer = GradientBoostingTrainer()
-        model, pred, metrics = trainer.train(X_train, y_train, X_test, y_test)
+        model, pred, metrics = trainer.train(X_train, y_train, X_test, y_test, self.tune_hyperparams)
         self.results.append(metrics)
         self.predictions['Gradient Boosting'] = pred
 
@@ -174,6 +229,13 @@ class TrainingPipeline:
 
 
 if __name__ == "__main__":
-    pipeline = TrainingPipeline("data/prices_with_features.csv")
+    import sys
+    tune = '--tune' in sys.argv or '-t' in sys.argv
+    
+    if tune:
+        print("Running with hyperparameter tuning...")
+    
+    pipeline = TrainingPipeline("data/prices_with_features.csv", tune_hyperparams=tune)
     results = pipeline.run()
     print("\n" + results.to_string(index=False))
+
